@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 @author: congying
-@email: wangcongying@kuaishou.com 
+@email: wangcongyinga@gmail.com 
 """
 import scipy.io
 
