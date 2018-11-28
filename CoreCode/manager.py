@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 @author: congying
-@email: wangcongyinga@gmail.com
+@email: wangcongyinga@gmail.com 
 """
 import scipy.io
 import numpy as np
