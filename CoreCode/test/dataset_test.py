@@ -31,7 +31,7 @@ def testmat(path, tag_name):
     values = mat.get(tag_name)
     print(values.shape[0])
     print(values.shape[1])
-    print(values)
+    print(type(values))
     return values[10, 0]
 
 
