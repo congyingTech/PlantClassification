@@ -9,6 +9,7 @@ import numpy as np
 import tensorflow as tf
 import pickle
 from utils import ConstructLookUpTable
+from algorithm.varible_sequence_classification import VariableSequenceClassification
 
 # ObservationIDs and species class PATH
 # One plant has one obs id, but may be has many media ids to record different organ.
@@ -167,7 +168,7 @@ def main():
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    model = VaribleSequenceClassification(data, target, dropout)
+    model = VariableSequenceClassification(data, target, dropout)
 
 
 
