@@ -6,6 +6,8 @@
 """
 import functools
 import tensorflow as tf
+from tensorflow.python.ops import rnn,array_ops
+from tensorflow.contrib.rnn import GRUCell, DropoutWrapper, MultiRNNCell
 
 
 def lazy_property(func):
@@ -44,6 +46,21 @@ class VariableSequenceClassification(object):
         length = tf.reduce_sum(used, axis=1)
         length = tf.cast(length, tf.int32)
         return length
+
+    @lazy_property
+    def prediction(self):
+        max_length_com = tf.shape(self.target)[1]
+        num_classes = int(self.target.get_shape()[2])
+
+        with tf.variable_scope('bidirectional_rnn'):
+            gru_cell_fw = GRUCell(self.num_hidden)
+            gru_cell_fw = DropoutWrapper(gru_cell_fw, output_keep_prob=self.dropout)
+            output_fw, _ = rnn.dynamic_rnn(gru_cell_fw, self.data, dtype=tf.float32, sequence_length=self.length)
+            tf.get_variable_scope().reuse_variables()
+
+
+
+
 
 
 
