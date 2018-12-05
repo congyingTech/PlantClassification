@@ -170,6 +170,20 @@ def main():
 
     model = VariableSequenceClassification(data, target, dropout)
 
+    summary_op = tf.summary.merge_all()
+    saver = tf.train.Saver(max_to_keep=None)
+    log_path = '/Users/wangcongying/PlantClassification/CoreCode/'
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        train_writer = tf.summary.FileWriter(log_path + 'train', sess.graph)
+        test_writer = tf.summary.FileWriter(log_path + 'test')
+        step = 1
+        while step*batch_size < training_iters:
+            batch_x, batch_y = plant_data.gen_next_batch(batch_size)
+            loss = sess.run(model.cost)
+
+
 
 
 
