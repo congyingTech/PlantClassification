@@ -6,7 +6,7 @@
 """
 import functools
 import tensorflow as tf
-from tensorflow.python.ops import rnn,array_ops
+from tensorflow.python.ops import rnn, array_ops
 from tensorflow.contrib.rnn import GRUCell, DropoutWrapper, MultiRNNCell
 
 
@@ -53,10 +53,27 @@ class VariableSequenceClassification(object):
         num_classes = int(self.target.get_shape()[2])
 
         with tf.variable_scope('bidirectional_rnn'):
+
+            # 正向rnn
             gru_cell_fw = GRUCell(self.num_hidden)
             gru_cell_fw = DropoutWrapper(gru_cell_fw, output_keep_prob=self.dropout)
             output_fw, _ = rnn.dynamic_rnn(gru_cell_fw, self.data, dtype=tf.float32, sequence_length=self.length)
             tf.get_variable_scope().reuse_variables()
+
+            # 反向(因为是双向rnn，所以还有一个反向的过程)
+            data_reverse = array_ops.reverse_sequence(
+                input=self.data, seq_lengths=self.length,
+                seq_dim=1, batch_dim=0)
+            gru_cell_re = GRUCell(self.num_hidden)
+            gru_cell_re = DropoutWrapper(gru_cell_re, output_keep_prob=self.dropout)
+            tmp, _ = rnn.dynamic_rnn(gru_cell_re, data_reverse, dtype=tf.float32, sequence_length=self.length)
+
+            output_re = array_ops.reverse_sequence(  # output的结果也要进行一个反向操作
+                input=tmp, seq_lengths=self.length,
+                seq_dim=1, batch_dim=0)
+
+            # 双向rnn拼接起来，然后进行softmax
+            output = tf.concat(axis=2, values=[output_fw, output_re])
 
 
 
