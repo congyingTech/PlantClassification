@@ -181,7 +181,8 @@ def main():
         step = 1
         while step*batch_size < training_iters:
             batch_x, batch_y = plant_data.gen_next_batch(batch_size)
-            loss = sess.run(model.cost)
+            loss = sess.run(model.cost, feed_dict={data: batch_x, target: batch_y, dropout: drop_train})
+            train_acc = sess.run(model.error, feed_dict={data: batch_x, target: batch_y, dropout: drop_train})
 
 
 

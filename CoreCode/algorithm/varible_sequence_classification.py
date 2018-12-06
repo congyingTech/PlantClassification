@@ -106,6 +106,11 @@ class VariableSequenceClassification(object):
         tf.summary.scalar("cost", cross_entropy)  # todo:看一下summary到底是个啥子东东？？？
         return cross_entropy
 
+    @lazy_property
+    def error(self):
+        mistakes = tf.equal(tf.argmax(self.target, 2), tf.argmax(self.prediction, 2))
+
+
 
 
 
