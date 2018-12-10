@@ -84,9 +84,18 @@ def cast_test():
     with tf.Session() as sess:
         print(b.eval())
 
+def max_test():
+    a = [[[1,2,3], [1,2,3]],[[1,2,3], [1,2,3]]]
+    b = [[[1,2,4,5], [1,2,5,99]],[[1,2,6,100], [1,2,7,101]]]
+    c = tf.equal(tf.argmax(a, 2), tf.argmax(b, 2))
+    with tf.Session() as sess:
+        print(tf.argmax(a, 2).eval())
+        print(tf.argmax(b, 2).eval())
+        print(c.eval())
+
 
 def main():
-    cast_test()
+    max_test()
 
 
 if __name__ == "__main__":
