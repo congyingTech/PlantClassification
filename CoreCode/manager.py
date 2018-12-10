@@ -8,8 +8,12 @@ import os
 import numpy as np
 import tensorflow as tf
 import pickle
+import logging
 from utils import ConstructLookUpTable
 from algorithm.varible_sequence_classification import VariableSequenceClassification
+
+# 暂时用简单的log打印一下
+logging.basicConfig(filename='logger.log', level=logging.DEBUG)
 
 # ObservationIDs and species class PATH
 # One plant has one obs id, but may be has many media ids to record different organ.
@@ -54,7 +58,7 @@ class DataSet(object):
         self.test_demo = self.batch_up_model.construct(self.test_lists, "test")  # 创建test的demo
 
         if self.layer_name != 'fc7_final':
-            self.feature_size = self.channel_num*14*14  # 输入是14*14大小的图片
+            self.feature_size = self.channel_num * 14 * 14  # 输入是14*14大小的图片
         else:
             self.feature_size = 4096  # 当是fc_final的时候，就是进入了全连接层，feature的大小是4096
 
@@ -97,6 +101,18 @@ class DataSet(object):
 
         return batch
 
+    def pretesting_batch(self, test_total):
+        start = self.index_in_epoch_test
+        self.index_in_epoch_test += test_total
+        if self.index_in_epoch_test > self.test_length:
+            start = 0
+            self.index_in_epoch_test = test_total
+            assert test_total <= self.test_length
+        end = self.index_in_epoch_test
+
+        return self.pretraining_batch(self.permutation_lists_test[start:end], test_total, 0), self.dense_to_one_hot(
+            self.test_labels[start:end])
+
     def gen_next_batch(self, batch_size):
         """
         下一个training batch
@@ -115,7 +131,8 @@ class DataSet(object):
             self.index_in_epoch = batch_size
             assert batch_size <= self.train_length
         end = self.index_in_epoch
-        return self.pretraining_batch(self.train_lists[start:end], batch_size, self.dense_to_one_hot(self.train_labels_perm[start:end]))
+        return self.pretraining_batch(self.train_lists[start:end], batch_size,
+                                      self.dense_to_one_hot(self.train_labels_perm[start:end]))
 
     def dense_to_one_hot(self, labels_dense, classes_length=1000):
         """
@@ -128,7 +145,8 @@ class DataSet(object):
         labels_length = labels_dense.shape[0]
         index_offset = np.arange(labels_length) * classes_length  # (0, 1000, 2000, 3000....) 测试集长度是labels_length:13887
         labels_one_hot = np.zeros((labels_length, classes_length))  # 是一个m*n的全零二维数组 长度是13887*1000
-        labels_one_hot.flat[index_offset+labels_dense.ravel()] = 1  # 这里的意思是把二维全零数组铺平成一个一维的数组，然后[x]第x值补充为1,铺平后填充值后仍然是a 13887*1000的二维数组
+        labels_one_hot.flat[
+            index_offset + labels_dense.ravel()] = 1  # 这里的意思是把二维全零数组铺平成一个一维的数组，然后[x]第x值补充为1,铺平后填充值后仍然是a 13887*1000的二维数组
 
         temp = np.zeros((labels_one_hot.shape[0], self.max_seq, classes_length))
         i = 0
@@ -179,14 +197,32 @@ def main():
         train_writer = tf.summary.FileWriter(log_path + 'train', sess.graph)
         test_writer = tf.summary.FileWriter(log_path + 'test')
         step = 1
-        while step*batch_size < training_iters:
+        while step * batch_size < training_iters:
             batch_x, batch_y = plant_data.gen_next_batch(batch_size)
-            loss = sess.run(model.cost)
+            loss = sess.run(model.cost, feed_dict={data: batch_x, target: batch_y, dropout: drop_train})
+            train_acc = sess.run(model.error, feed_dict={data: batch_x, target: batch_y, dropout: drop_train})
+            _, summary = sess.run([model.optmize, summary_op],
+                                  feed_dict={data: batch_x, target: batch_y, dropout: drop_train})
+            train_writer.add_summary(summary, step * batch_size)
+            if step % display_size == 0:
+                logging.info("Epoch:" + str(step) + ", Mini batch Loss = " + "{:.6f}".format(
+                    loss) + ", Training Acc = " + "{:.5f}".format(train_acc) + ", lengthData= " + "{:.1f}".format(
+                    plant_data.max_seq))
 
-
-
-
-
+            if step % display_size == 0:
+                save_id = 'model_%s' % step
+                save_path = save_dir + save_id
+                saver.save(sess, save_path)
+                # calculate test acc
+                test_data, test_label = plant_data.pretesting_batch(test_num_total)
+                test_loss = sess.run(model.cost, feed_dict={data: test_data, target: test_label, dropout: drop_test})
+                test_acc, summary = sess.run([model.error, summary_op], feed_dict={data: test_data, target: test_label,
+                                                                                   dropout: drop_test})
+                logging.debug('Training Acc {:3.5f}%'.format(test_acc) +
+                              ", Test batch Loss= " + "{:.6f}".format(test_loss))
+                test_writer.add_summary(summary, step*batch_size)
+            step += 1
+    print("Optimization Finished!")
 
 
 if __name__ == "__main__":

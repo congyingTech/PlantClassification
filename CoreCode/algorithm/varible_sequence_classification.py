@@ -13,6 +13,7 @@ from tensorflow.contrib.rnn import GRUCell, DropoutWrapper, MultiRNNCell
 
 def lazy_property(func):
     attribute = '_' + func.__name__
+
     @property
     @functools.wraps(func)
     def wrapper(self):
@@ -106,8 +107,26 @@ class VariableSequenceClassification(object):
         tf.summary.scalar("cost", cross_entropy)  # todo:看一下summary到底是个啥子东东？？？
         return cross_entropy
 
+    @lazy_property
+    def error(self):
+        mistakes = tf.equal(
+            tf.argmax(self.target, 2), tf.argmax(self.prediction, 2))
+        mistakes = tf.cast(mistakes, tf.float32)  # true -> 1, false -> 0
+        mask = tf.sign(tf.reduce_max(tf.abs(self.target), axis=2))  # shape = (batch_size, max_seg)
+        mistakes *= mask
+        # Average over actual sequence lengths.
+        mistakes = tf.reduce_sum(mistakes, axis=1)  # shape = (batch_size,1)
+        mistakes /= tf.cast(self.length, tf.float32)
+        accuracy = tf.reduce_mean(mistakes)  # shape = (1,1)
+        tf.summary.scalar("Accuracy", accuracy)
 
+        return accuracy
 
+    @lazy_property
+    def optmize(self):
+        learning_rate = 0.0001
+        beta = 0.0001
 
-
-
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, epsilon=1e-4)
+        loss = tf.reduce_mean(self.cost + beta*self.regularizer)
+        return optimizer.minimize(loss)
